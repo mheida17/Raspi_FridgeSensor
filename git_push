@@ -1,0 +1,9 @@
+#!/bin/bash
+
+git add .
+read -p 'What would you like your commit message to be? ' message
+echo $message
+git commit -m "$message"
+git fetch
+git rebase
+git push origin
