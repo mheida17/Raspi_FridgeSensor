@@ -133,12 +133,12 @@ while True:
     measurement_taken = False
 
   # add the uptime to the file before emailing
-  if time.localtime(time.time()).tm_hour == 15 and email_sent_today == False:
+  if time.localtime(time.time()).tm_hour == 18 and email_sent_today == False:
     add_uptime_to_file(DATAFILE)
     send_email(mail_list[0])
     os.remove(DATAFILE)
     email_sent_today = True
-  elif time.localtime(time.time()).tm_hour == 16 and email_sent_today == True:
+  elif time.localtime(time.time()).tm_hour == 19 and email_sent_today == True:
     email_sent_today = False
 
   if time.localtime(time.time()).tm_wday == 1 and (time.time()-BOOT_TIME) > SEVEN_DAYS_IN_SEC:
