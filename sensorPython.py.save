@@ -31,9 +31,9 @@ with open("destination_email_list.txt", "r") as file:
     PIN_2 = 23
     DATAFILE = "temperature_data.txt"
     BOOT_TIME = time.time()
-#   print(BOOT_TIME)
-#    SEVEN_DAYS_IN_SEC = 600
-    SEVEN_DAYS_IN_SEC = 604800
+    print(BOOT_TIME)
+    SEVEN_DAYS_IN_SEC = 600
+#    SEVEN_DAYS_IN_SEC = 604800
 
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
@@ -53,7 +53,7 @@ def record_temperature():
         if humidity_2 is None or temperature_2 is None:
             humidity_2 = 100
             temperature_2 = 100
-#        print(((temperature_1 -4)* 9 / 5.0 + 32), "   ", (temperature_2 * 9 / 5.0 + 32))
+        print(((temperature_1 -3)* 9 / 5.0 + 32), "   ", (temperature_2 * 9 / 5.0 + 32))
     except RuntimeError:
         FILE_NAME.write("Error reading sensor!\r\n")
     else:
@@ -61,7 +61,7 @@ def record_temperature():
             temperature_1 = 100
         if temperature_2 is None:
             temperature_2 = 100
-    temperature_1 = (temperature_1 -4)* 9 / 5.0 + 32
+    temperature_1 = (temperature_1 -3)* 9 / 5.0 + 32
     temperature_2 = temperature_2 * 9 / 5.0 + 32
     FILE_NAME.write(
         "%s Ambient Temp %d Ambient Humidity %d Fridge Temp %d\r\n"
@@ -135,7 +135,7 @@ def send_email():
 def restart_pi():
     command = "/usr/bin/sudo /sbin/shutdown -r now"
     import subprocess
-    print("Entered restart subroutine REBOOTING")
+
     process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
     output = process.communicate()[0]
     print(output)
@@ -166,10 +166,7 @@ while True:
         EMAIL_SENT_TODAY = True
     elif time.localtime(time.time()).tm_hour == 19 and EMAIL_SENT_TODAY:
         EMAIL_SENT_TODAY = False
-#Friday = 4
-    if (
-            time.localtime(time.time()).tm_wday == 4
-            and (time.time() - BOOT_TIME) > SEVEN_DAYS_IN_SEC
-    ):
-    	restart_pi()
-#    print(time.localtime(time.time()).tm_wday, "  ", time.time()-BOOT_TIME)
+    if time.localtime(time.time()).tm_wday == 5 and ((time.time() - BOOT_TIME) > SEVEN_DAYS_IN_SEC):
+	restart_pi()
+	print("RESTART")
+    print(time.time()-BOOT_TIME)
