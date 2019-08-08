@@ -4,6 +4,10 @@
 import time
 import os
 import sys
+import requests
+import urllib3
+
+from urllib.request import urlopen
 
 # imports for email
 import smtplib
@@ -34,7 +38,7 @@ with open("destination_email_list.txt", "r") as file:
 #   print(BOOT_TIME)
 #    SEVEN_DAYS_IN_SEC = 600
     SEVEN_DAYS_IN_SEC = 604800
-
+    internet_status='down'
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
 ##########################################
@@ -73,11 +77,9 @@ def record_temperature():
         )
     )
 
-
 ##########################################
 # FUNCTION TO ADD UPTIME TO FILE
 ##########################################
-
 
 def add_uptime_to_file():
     uptime = time.time() - BOOT_TIME
@@ -90,6 +92,50 @@ def add_uptime_to_file():
             "Total Uptime (D:H:M:S) = %d:%d:%02d:%02d" % (days, hours, minutes, seconds)
         )
 
+##########################################
+# STARTUP / REBOOT MESSAGE
+##########################################
+
+def reboot_message():
+    FILE_NAME = open(DATAFILE, "a+")
+    FILE_NAME.write(
+	"%s Rebooting / Starting up\r\n"
+        % (
+            time.strftime("%b %d - %H:%M:%S")
+        )
+    )
+    FILE_NAME.close()
+
+##########################################
+# Network  MESSAGE
+##########################################
+def network_message():
+    FILE_NAME = open(DATAFILE, "a+")
+    FILE_NAME.write(
+        "%s Network status \r\n"
+        % (
+            time.strftime("%b %d - %H:%M:%S")
+        )
+    )
+
+    FILE_NAME.close()
+
+#line 120
+##########################################
+#  Function to check internet / wifi
+##########################################
+def check_internet():
+    url='http://www.google.com/'
+    timeout=5
+    try:
+        _ = requests.get(url, timeout=timeout)
+        internet_status='up'
+        print("internet up")
+        return True
+    except requests.ConnectionError:
+        internet_status='down'
+        print("Internet down.")
+    return False
 
 ##########################################
 # FUNCTION TO SEND EMAILS
@@ -146,11 +192,18 @@ def restart_pi():
 ##########################################
 EMAIL_SENT_TODAY = False
 MEASUREMENT_TAKEN = False
+
+print("RESTARTING")
+time.sleep(10)
+reboot_message()  # adds reboot message on bootup
+print("Running")
+
 while True:
-    # add something to record powerup time
-    # add reboot message to the file for every boot
+#    check_internet()
+#    print(internet_status)
+#    time.sleep(10)
     # TODO: start using unix time to simplify the conditional statements
-    if time.localtime(time.time()).tm_sec == 0 and not MEASUREMENT_TAKEN:
+    if time.localtime(time.time()).tm_sec == 30 and not MEASUREMENT_TAKEN:
         FILE_NAME = open(DATAFILE, "a+")
         record_temperature()
         FILE_NAME.close()
@@ -160,16 +213,22 @@ while True:
 
     # add the uptime to the file before emailing
     if time.localtime(time.time()).tm_hour == 18 and not EMAIL_SENT_TODAY:
-        add_uptime_to_file()
-        send_email()
-        os.remove(DATAFILE)
-        EMAIL_SENT_TODAY = True
+#        if check_internet():
+#            print("Internet/wifi is up")
+         add_uptime_to_file()
+         send_email()
+         os.remove(DATAFILE)
+         EMAIL_SENT_TODAY = True
+#        else:
+#            print("Internet is down")
     elif time.localtime(time.time()).tm_hour == 19 and EMAIL_SENT_TODAY:
         EMAIL_SENT_TODAY = False
-#Friday = 4
-    if (
-            time.localtime(time.time()).tm_wday == 4
-            and (time.time() - BOOT_TIME) > SEVEN_DAYS_IN_SEC
-    ):
-    	restart_pi()
+
+
+#Friday = 4, reboot moved to crontab
+#    if (
+#            time.localtime(time.time()).tm_wday == 4
+#            and (time.time() - BOOT_TIME) > SEVEN_DAYS_IN_SEC
+#    ):
+#    	restart_pi()
 #    print(time.localtime(time.time()).tm_wday, "  ", time.time()-BOOT_TIME)
