@@ -4,9 +4,9 @@
 import time
 import os
 import sys
-#import requests
+import requests
 #import urllib3
-import socket
+#import socket
 #from urllib.request import urlopen
 
 # imports for email
@@ -36,9 +36,8 @@ PIN_1 = 17   #Ambient
 PIN_2 = 23   #Remote
 DATAFILE = "temperature_data.txt"
 BOOT_TIME = time.time()
-Internet_time = time.time()
 TEST_INTERNET_IN_SEC = 25	#Must be greater than 4 sec or considered a DoS.
-
+Internet_time = (time.time() - (TEST_INTERNET_IN_SEC*2)) # force test first time through
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
 ##########################################
@@ -87,7 +86,7 @@ def add_uptime_to_file():
     seconds = int(uptime % 60)
     with open(DATAFILE, "r+") as data_file:
         data_file.write(
-            "Total Uptime (D:H:M:S) = %d:%d:%02d:%02d \r\n" % (days, hours, minutes, seconds)
+            "\rTotal Uptime (D:H:M:S) = %d:%d:%02d:%02d \r\n" % (days, hours, minutes, seconds)
         )
 
 ##########################################
@@ -108,17 +107,17 @@ def network_message(message):
 ##########################################
 #  Function to check internet / wifi
 ##########################################
-def check_internet(url):
-#    timeout=1
+def check_connection(url):
+    timeout=1
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(('www.google.com',80))
-#        _ = requests.get(url, timeout=timeout)
-        message="Internet status is up"
+#        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#        sock.connect((url,80))
+        _ = requests.get(url, timeout=timeout)
+        message=" status is up"
         return message
-#    except requests.ConnectionError:
-    except:
-        message="Internet status is down"
+    except requests.ConnectionError:
+#    except:
+        message=" status is down"
     return message
 
 ##########################################
@@ -174,22 +173,30 @@ def restart_pi():
 ##########################################
 EMAIL_SENT_TODAY = False
 MEASUREMENT_TAKEN = False
-url='http://www.google.com/'
-#url='http://time.google.com/'
+urlI="http://www.google.com"
+urlW="http://192.168.5.200"
 message="Rebooting / Starting up"
+new_messageW=messageW="WIFI"
+messageI="Internet"
 network_message(message)  # adds reboot message on bootup
-new_message = check_internet(url)
 
 while True: 
 
     if (time.time()-Internet_time) > TEST_INTERNET_IN_SEC:
         t=time.time()
-        new_message = check_internet(url)
+        new_messageI = ("Internet" + check_connection(urlI))
         Internet_time = time.time()
-        print("Internet testing took",int((Internet_time-t)*1000),"msec")
-    if message != new_message:
-        network_message(new_message)
-        message = new_message
+        print("Connection testing took",int((Internet_time-t)*1000),"msec")
+#        print(new_messageI)
+        if messageI != new_messageI:
+            network_message(new_messageI)
+            messageI = new_messageI
+            new_messageW = "WIFI" + check_connection(urlW)
+            if messageW != new_messageW:
+                network_message(new_messageW)
+                messageW = new_messageW
+#                print(new_messageW)
+#
     # TODO: start using unix time to simplify the conditional statements
     if time.localtime(time.time()).tm_sec == 0 and not MEASUREMENT_TAKEN:
         FILE_NAME = open(DATAFILE, "a+")
@@ -199,7 +206,7 @@ while True:
     elif time.localtime(time.time()).tm_sec != 0 and MEASUREMENT_TAKEN:
         MEASUREMENT_TAKEN = False
     # add the uptime to the file before emailing
-    if time.localtime(time.time()).tm_hour == 18 and not EMAIL_SENT_TODAY and message =="Internet status is up":
+    if time.localtime(time.time()).tm_hour == 18 and not EMAIL_SENT_TODAY and messageI =="Internet status is up":
          add_uptime_to_file()
          send_email()
          os.remove(DATAFILE)
