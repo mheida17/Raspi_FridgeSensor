@@ -4,11 +4,14 @@
 import time
 import os
 import sys
-import requests
+#import requests
 #import urllib3
 #import socket
 #from urllib.request import urlopen
-
+try:
+    import httplib
+except:
+    import http.client as httplib
 # imports for email
 import smtplib
 from email.mime.text import MIMEText
@@ -36,7 +39,7 @@ PIN_1 = 17   #Ambient
 PIN_2 = 23   #Remote
 DATAFILE = "temperature_data.txt"
 BOOT_TIME = time.time()
-TEST_INTERNET_IN_SEC = 25	#Must be greater than 4 sec or considered a DoS.
+TEST_INTERNET_IN_SEC = 10	#Must be greater than 4 sec or considered a DoS.
 Internet_time = (time.time() - (TEST_INTERNET_IN_SEC*2)) # force test first time through
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
@@ -62,7 +65,7 @@ def record_temperature():
             temperature_1 = 100
         if temperature_2 is None:
             temperature_2 = 100
-    temperature_1 = (temperature_1 -3)* 9 / 5.0 + 32
+    temperature_1 = (temperature_1 - 4)* 9 / 5.0 + 32
     temperature_2 = temperature_2 * 9 / 5.0 + 32
     FILE_NAME.write(
         "%s Ambient Temp %d Ambient Humidity %d Fridge Temp %d\r\n"
@@ -75,7 +78,7 @@ def record_temperature():
     )
 
 ##########################################
-# FUNCTION TO ADD UPTIME TO FILE
+# FUNCTION TO ADD UPTIME TO TOP OF FILE
 ##########################################
 
 def add_uptime_to_file():
@@ -84,10 +87,14 @@ def add_uptime_to_file():
     hours = int(uptime % 86400 / 3600)
     minutes = int(uptime % 3600 / 60)
     seconds = int(uptime % 60)
-    with open(DATAFILE, "r+") as data_file:
+    with open(DATAFILE, "r") as data_file:
+         temp =data_file.read()
+    with open(DATAFILE, 'w') as data_file:
         data_file.write(
             "\rTotal Uptime (D:H:M:S) = %d:%d:%02d:%02d \r\n" % (days, hours, minutes, seconds)
         )
+    with open(DATAFILE, 'a') as data_file:
+        data_file.write(temp)
 
 ##########################################
 # MESSAGE
@@ -109,14 +116,18 @@ def network_message(message):
 ##########################################
 def check_connection(url):
     timeout=1
+    conn = httplib.HTTPConnection(url, timeout=timeout)
     try:
 #        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 #        sock.connect((url,80))
-        _ = requests.get(url, timeout=timeout)
+#        _ = requests.get(url, timeout=timeout)
+        conn.request("HEAD", "/")
+        conn.close()
         message=" status is up"
         return message
-    except requests.ConnectionError:
-#    except:
+#    except requests.ConnectionError:
+    except:
+        conn.close()
         message=" status is down"
     return message
 
@@ -173,19 +184,23 @@ def restart_pi():
 ##########################################
 EMAIL_SENT_TODAY = False
 MEASUREMENT_TAKEN = False
-urlI="http://www.google.com"
-urlW="http://192.168.5.200"
+urlI = ["www.google.com", "www.github.com", "www.bing.com", "www.msn.com"]
+urlW="192.168.0.1"
 message="Rebooting / Starting up"
 new_messageW=messageW="WIFI"
 messageI="Internet"
 network_message(message)  # adds reboot message on bootup
-
-while True: 
+x = 0 #  URL counter
+while True:
 
     if (time.time()-Internet_time) > TEST_INTERNET_IN_SEC:
         t=time.time()
-        new_messageI = ("Internet" + check_connection(urlI))
+        new_messageI = ("Internet" + check_connection(urlI[x]))
         Internet_time = time.time()
+#        print (urlI[x])
+        x = x + 1 #update url counter
+        if x == len(urlI):  # if counter = number of url entires
+            x = 0
         print("Connection testing took",int((Internet_time-t)*1000),"msec")
 #        print(new_messageI)
         if messageI != new_messageI:
@@ -196,7 +211,6 @@ while True:
                 network_message(new_messageW)
                 messageW = new_messageW
 #                print(new_messageW)
-#
     # TODO: start using unix time to simplify the conditional statements
     if time.localtime(time.time()).tm_sec == 0 and not MEASUREMENT_TAKEN:
         FILE_NAME = open(DATAFILE, "a+")
@@ -210,10 +224,6 @@ while True:
          add_uptime_to_file()
          send_email()
          os.remove(DATAFILE)
-         with open(DATAFILE, "a+") as data_file:
-             data_file.write(
-             "x\r\n"
-             )
          EMAIL_SENT_TODAY = True
     elif time.localtime(time.time()).tm_hour == 19 and EMAIL_SENT_TODAY:
         EMAIL_SENT_TODAY = False
