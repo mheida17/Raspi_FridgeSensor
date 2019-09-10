@@ -99,23 +99,23 @@ def add_uptime_to_file():
 ##########################################
 # MESSAGE
 ##########################################
-def network_message(message):
+def network_message(message,message1):
     FILE_NAME = open(DATAFILE, "a+")
     FILE_NAME.write(
-        "%s  %s \r\n"
+        "%s  %s %s \r\n"
         % (
             time.strftime("%b %d - %H:%M:%S"),
-            message,
+            message, message1
         )
     )
     FILE_NAME.close()
-    print(message)
+    print(message," ",message1)
 
 ##########################################
 #  Function to check internet / wifi
 ##########################################
 def check_connection(url):
-    timeout=1
+    timeout=3
     conn = httplib.HTTPConnection(url, timeout=timeout)
     try:
 #        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -184,12 +184,13 @@ def restart_pi():
 ##########################################
 EMAIL_SENT_TODAY = False
 MEASUREMENT_TAKEN = False
-urlI = ["www.google.com", "www.github.com", "www.bing.com", "www.msn.com"]
+urlI = ["www.google.com", "www.github.com", "www.bing.com", "www.msn.com", "www.yahoo.com", "www.pinterest.com"]
 urlW="192.168.0.1"
 message="Rebooting / Starting up"
+message1=" "
 new_messageW=messageW="WIFI"
 messageI="Internet"
-network_message(message)  # adds reboot message on bootup
+network_message(message,message1)  # adds reboot message on bootup
 x = 0 #  URL counter
 while True:
 
@@ -197,20 +198,17 @@ while True:
         t=time.time()
         new_messageI = ("Internet" + check_connection(urlI[x]))
         Internet_time = time.time()
-#        print (urlI[x])
-        x = x + 1 #update url counter
-        if x == len(urlI):  # if counter = number of url entires
-            x = 0
         print("Connection testing took",int((Internet_time-t)*1000),"msec")
-#        print(new_messageI)
         if messageI != new_messageI:
-            network_message(new_messageI)
+            network_message(new_messageI,urlI[x])
             messageI = new_messageI
             new_messageW = "WIFI" + check_connection(urlW)
             if messageW != new_messageW:
-                network_message(new_messageW)
+                network_message(new_messageW,urlW)
                 messageW = new_messageW
-#                print(new_messageW)
+        x = x + 1 #update url counter
+        if x == len(urlI):  # if counter = number of url entires
+            x = 0
     # TODO: start using unix time to simplify the conditional statements
     if time.localtime(time.time()).tm_sec == 0 and not MEASUREMENT_TAKEN:
         FILE_NAME = open(DATAFILE, "a+")
