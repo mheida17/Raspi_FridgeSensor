@@ -65,8 +65,9 @@ def record_temperature():
             temperature_1 = 100
         if temperature_2 is None:
             temperature_2 = 100
-    temperature_1 = (temperature_1 - 5)* 9 / 5.0 + 32
+    temperature_1 = (temperature_1 - 4)* 9 / 5.0 + 32
     temperature_2 = temperature_2 * 9 / 5.0 + 32
+    FILE_NAME = open(DATAFILE, "a+")
     FILE_NAME.write(
         "%s Ambient Temp %d Ambient Humidity %d Fridge Temp %d\r\n"
         % (
@@ -76,6 +77,8 @@ def record_temperature():
             temperature_2,
         )
     )
+    FILE_NAME.close()
+
 
 ##########################################
 # FUNCTION TO ADD UPTIME TO TOP OF FILE
@@ -97,7 +100,7 @@ def add_uptime_to_file():
         data_file.write(temp)
 
 ##########################################
-# MESSAGE
+# UOPDATE LOG FILE MESSAGE
 ##########################################
 def network_message(message,message1):
     FILE_NAME = open(DATAFILE, "a+")
@@ -125,9 +128,6 @@ def Watchdog():
     )
     FILE_NAME.close()
     print("Watch dog file written")
-
-
-
 
 
 ##########################################
@@ -203,37 +203,38 @@ def restart_pi():
 ##########################################
 EMAIL_SENT_TODAY = False
 MEASUREMENT_TAKEN = False
+ #Multiple sites in urlI  reduce frequency of pings
 urlI = ["www.google.com", "www.github.com", "www.bing.com", "www.msn.com", "www.yahoo.com", "www.pinterest.com"]
-urlW="192.168.0.1"
-message="Rebooting / Starting up"
+urlW="192.168.0.1" # Internal netowrk IP
+message="Power loss Rebooting / Starting up"
 message1=" "
 new_messageW=messageW="WIFI"
 messageI="Internet"
 network_message(message,message1)  # adds reboot message on bootup
-x = 0 #  URL counter
+x = 0 #  URL list counter
 while True:
 
-    if (time.time()-Internet_time) > TEST_INTERNET_IN_SEC:
+    if (time.time()-Internet_time) > TEST_INTERNET_IN_SEC:  #Has internet test intreval time been exceeded?
         t=time.time()
         new_messageI = ("Internet" + check_connection(urlI[x]))
         Internet_time = time.time()
         print("Connection testing took",int((Internet_time-t)*1000),"msec")
-        if messageI != new_messageI:
-            network_message(new_messageI,urlI[x])
+        if messageI != new_messageI:  # Has the internet status changed?
+            network_message(new_messageI,urlI[x]) # Update log file with Internet connectivity status ans which url used
             messageI = new_messageI
-            new_messageW = "WIFI" + check_connection(urlW)
-            if messageW != new_messageW:
-                network_message(new_messageW,urlW)
+            new_messageW = "WIFI" + check_connection(urlW)  # Check WIFI status
+            if messageW != new_messageW:  #Has WIFI status changed
+                network_message(new_messageW,urlW) # Update log file
                 messageW = new_messageW
         x = x + 1 #update url counter
-        if x == len(urlI):  # if counter = number of url entires
+        if x == len(urlI):  # if counter = number of urlI list entires
             x = 0
     # TODO: start using unix time to simplify the conditional statements
     if time.localtime(time.time()).tm_sec == 0 and not MEASUREMENT_TAKEN:
         Watchdog()  #Create watchdog file every min.
-        FILE_NAME = open(DATAFILE, "a+")
+#        FILE_NAME = open(DATAFILE, "a+")
         record_temperature()
-        FILE_NAME.close()
+#        FILE_NAME.close()
         MEASUREMENT_TAKEN = True
     elif time.localtime(time.time()).tm_sec != 0 and MEASUREMENT_TAKEN:
         MEASUREMENT_TAKEN = False
