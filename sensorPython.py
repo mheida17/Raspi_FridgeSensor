@@ -39,7 +39,7 @@ PIN_1 = 17   #Ambient
 PIN_2 = 23   #Remote
 DATAFILE = "temperature_data.txt"
 BOOT_TIME = time.time()
-TEST_INTERNET_IN_SEC = 10	#Must be greater than 4 sec or considered a DoS.
+TEST_INTERNET_IN_SEC = 15	#Must be greater than 4 sec or considered a DoS.
 Internet_time = (time.time() - (TEST_INTERNET_IN_SEC*2)) # force test first time through
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
@@ -65,7 +65,7 @@ def record_temperature():
             temperature_1 = 100
         if temperature_2 is None:
             temperature_2 = 100
-    temperature_1 = (temperature_1 - 4)* 9 / 5.0 + 32
+    temperature_1 = (temperature_1 - 5)* 9 / 5.0 + 32
     temperature_2 = temperature_2 * 9 / 5.0 + 32
     FILE_NAME.write(
         "%s Ambient Temp %d Ambient Humidity %d Fridge Temp %d\r\n"
@@ -112,11 +112,30 @@ def network_message(message,message1):
     print(message," ",message1)
 
 ##########################################
+# CREATE WATCHDOG FILE
+##########################################
+def Watchdog():
+    FILE_NAME = open("mywatchdog.txt", "w")
+    FILE_NAME.write(
+        "%s  %s \r\n"
+        % (
+            time.strftime("%b %d - %H:%M:%S"),
+            " Watchdog written"
+        )
+    )
+    FILE_NAME.close()
+    print("Watch dog file written")
+
+
+
+
+
+##########################################
 #  Function to check internet / wifi
 ##########################################
 def check_connection(url):
-    timeout=3
-    conn = httplib.HTTPConnection(url, timeout=timeout)
+#    timeout=2
+    conn = httplib.HTTPConnection(url, timeout = 2)
     try:
 #        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 #        sock.connect((url,80))
@@ -211,6 +230,7 @@ while True:
             x = 0
     # TODO: start using unix time to simplify the conditional statements
     if time.localtime(time.time()).tm_sec == 0 and not MEASUREMENT_TAKEN:
+        Watchdog()  #Create watchdog file every min.
         FILE_NAME = open(DATAFILE, "a+")
         record_temperature()
         FILE_NAME.close()
