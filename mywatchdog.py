@@ -30,15 +30,16 @@ def logfile_message(message):
 #     MAIN LOOP
 ##########################################
 DATAFILE = "temperature_data.txt"
-watchdog_time = 180 # 3 Min
-watch_time = time.time()  #INIT WATCH TIME
+watchdog_time = 600 # Checks every 10 Min
+watch_time = time.time()   #INIT WATCH TIME
 while True:
-
+    time.sleep(0.9) 
     if time.localtime(time.time()).tm_sec == 50 and (time.time() - watch_time) > watchdog_time:
         watch_time = time.time()
         if os.path.isfile("mywatchdog.txt"):  # Does watchdog.txt file exist
             print("file exists")
             os.remove("mywatchdog.txt")
+            time.sleep(watchdog_time)
         else:
             print("File doesn't exists")
             logfile_message("WATCHDOG AUTO REBOOT")

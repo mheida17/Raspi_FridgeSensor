@@ -39,7 +39,7 @@ PIN_1 = 17   #Ambient
 PIN_2 = 23   #Remote
 DATAFILE = "temperature_data.txt"
 BOOT_TIME = time.time()
-TEST_INTERNET_IN_SEC = 15	#Must be greater than 4 sec or considered a DoS.
+TEST_INTERNET_IN_SEC = 23	#Must be greater than 4 sec or considered a DoS.
 Internet_time = (time.time() - (TEST_INTERNET_IN_SEC*2)) # force test first time through
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
@@ -65,7 +65,7 @@ def record_temperature():
             temperature_1 = 100
         if temperature_2 is None:
             temperature_2 = 100
-    temperature_1 = (temperature_1 - 4)* 9 / 5.0 + 32
+    temperature_1 = (temperature_1 - 2) * 9 / 5.0 + 32
     temperature_2 = temperature_2 * 9 / 5.0 + 32
     FILE_NAME = open(DATAFILE, "a+")
     FILE_NAME.write(
@@ -112,7 +112,7 @@ def network_message(message,message1):
         )
     )
     FILE_NAME.close()
-    print(message," ",message1)
+#    print(message," ",message1)
 
 ##########################################
 # CREATE WATCHDOG FILE
@@ -127,7 +127,6 @@ def Watchdog():
         )
     )
     FILE_NAME.close()
-    print("Watch dog file written")
 
 
 ##########################################
@@ -203,7 +202,7 @@ def restart_pi():
 ##########################################
 EMAIL_SENT_TODAY = False
 MEASUREMENT_TAKEN = False
- #Multiple sites in urlI  reduce frequency of pings
+ #Multiple sites in urlI to reduce frequency of pings
 urlI = ["www.google.com", "www.github.com", "www.bing.com", "www.msn.com", "www.yahoo.com", "www.pinterest.com"]
 urlW="192.168.0.1" # Internal netowrk IP
 message="Power loss Rebooting / Starting up"
@@ -213,12 +212,13 @@ messageI="Internet"
 network_message(message,message1)  # adds reboot message on bootup
 x = 0 #  URL list counter
 while True:
+    time.sleep(0.9)     #ADDED TO CUT DOWN ON CPU USAGE
 
     if (time.time()-Internet_time) > TEST_INTERNET_IN_SEC:  #Has internet test intreval time been exceeded?
         t=time.time()
         new_messageI = ("Internet" + check_connection(urlI[x]))
         Internet_time = time.time()
-        print("Connection testing took",int((Internet_time-t)*1000),"msec")
+#        print("Connection testing took",int((Internet_time-t)*1000),"msec")
         if messageI != new_messageI:  # Has the internet status changed?
             network_message(new_messageI,urlI[x]) # Update log file with Internet connectivity status ans which url used
             messageI = new_messageI
