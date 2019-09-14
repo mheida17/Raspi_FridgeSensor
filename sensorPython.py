@@ -1,17 +1,15 @@
+""" Records the temperature of two locations and sends the file via email """
 #!/usr/bin/python3
 
 # generic imports
 import time
 import os
 import sys
-#import requests
-#import urllib3
-#import socket
-#from urllib.request import urlopen
 try:
     import httplib
 except:
     import http.client as httplib
+
 # imports for email
 import smtplib
 from email.mime.text import MIMEText
@@ -31,7 +29,8 @@ else:
 # Globals
 with open("email_password.txt", "r") as file:
     SRC_USERNAME, SRC_PASSWORD = file.read().split(" ")
-# update to accept more than a single email from file
+
+# TODO: update to accept more than a single email from file
 with open("destination_email_list.txt", "r") as file:
     MAIL_LIST = [line.split(", ") for line in file.readlines()]
 
@@ -40,12 +39,13 @@ PIN_2 = 23   #Remote
 DATAFILE = "temperature_data.txt"
 BOOT_TIME = time.time()
 TEST_INTERNET_IN_SEC = 23	#Must be greater than 4 sec or considered a DoS.
-Internet_time = (time.time() - (TEST_INTERNET_IN_SEC*2)) # force test first time through
+INTERNET_TIME = (time.time() - (TEST_INTERNET_IN_SEC*2)) # force test first time through
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
 ##########################################
-
 def record_temperature():
+    """ Records the temperature to the data file """
+    file_name = open(DATAFILE, "a+")
     try:
         if RASPI_BOOL:
             humidity_1, temperature_1 = Adafruit_DHT.read_retry(SENSOR_1, PIN_1)
@@ -59,7 +59,8 @@ def record_temperature():
             humidity_2 = 100
             temperature_2 = 100
     except RuntimeError:
-        FILE_NAME.write("Error reading sensor!\r\n")
+        # TODO: Will this still set the temperatures that are used below?
+        file_name.write("Error reading sensor!\r\n")
     else:
         if temperature_1 is None:
             temperature_1 = 100
@@ -67,8 +68,7 @@ def record_temperature():
             temperature_2 = 100
     temperature_1 = (temperature_1 - 2) * 9 / 5.0 + 32
     temperature_2 = temperature_2 * 9 / 5.0 + 32
-    FILE_NAME = open(DATAFILE, "a+")
-    FILE_NAME.write(
+    file_name.write(
         "%s Ambient Temp %d Ambient Humidity %d Fridge Temp %d\r\n"
         % (
             time.strftime("%b %d - %H:%M:%S"),
@@ -77,83 +77,88 @@ def record_temperature():
             temperature_2,
         )
     )
-    FILE_NAME.close()
+    file_name.close()
 
 
 ##########################################
 # FUNCTION TO ADD UPTIME TO TOP OF FILE
 ##########################################
-
 def add_uptime_to_file():
+    """ Adds the raspberry pi uptime to the data file """
     uptime = time.time() - BOOT_TIME
     days = int(uptime / 86400)
     hours = int(uptime % 86400 / 3600)
     minutes = int(uptime % 3600 / 60)
     seconds = int(uptime % 60)
     with open(DATAFILE, "r") as data_file:
-         temp =data_file.read()
+        temp = data_file.read()
     with open(DATAFILE, 'w') as data_file:
         data_file.write(
-            "\rTotal Uptime (D:H:M:S) = %d:%d:%02d:%02d \r\n" % (days, hours, minutes, seconds)
+            "\rTotal Uptime (D:H:M:S) = %d:%d:%02d:%02d \r\n" % (
+                days,
+                hours,
+                minutes,
+                seconds
+            )
         )
     with open(DATAFILE, 'a') as data_file:
         data_file.write(temp)
 
 ##########################################
-# UOPDATE LOG FILE MESSAGE
+# UPDATE LOG FILE MESSAGE
 ##########################################
-def network_message(message,message1):
-    FILE_NAME = open(DATAFILE, "a+")
-    FILE_NAME.write(
+def network_message(message, message1):
+    """ Writes reboot message to the log file """
+    file_name = open(DATAFILE, "a+")
+    file_name.write(
         "%s  %s %s \r\n"
         % (
             time.strftime("%b %d - %H:%M:%S"),
             message, message1
         )
     )
-    FILE_NAME.close()
-#    print(message," ",message1)
+    file_name.close()
 
 ##########################################
 # CREATE WATCHDOG FILE
 ##########################################
-def Watchdog():
-    FILE_NAME = open("mywatchdog.txt", "w")
-    FILE_NAME.write(
+def watchdog():
+    """ Creates the watchdog file to make sure we are still running """
+    file_name = open("mywatchdog.txt", "w")
+    file_name.write(
         "%s  %s \r\n"
         % (
             time.strftime("%b %d - %H:%M:%S"),
             " Watchdog written"
         )
     )
-    FILE_NAME.close()
+    file_name.close()
 
 
 ##########################################
 #  Function to check internet / wifi
 ##########################################
 def check_connection(url):
-#    timeout=2
-    conn = httplib.HTTPConnection(url, timeout = 2)
+    """ Verifies the raspberry pi is still connected to the internet """
+    conn = httplib.HTTPConnection(url, timeout=2)
     try:
 #        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 #        sock.connect((url,80))
 #        _ = requests.get(url, timeout=timeout)
         conn.request("HEAD", "/")
         conn.close()
-        message=" status is up"
-        return message
+        message = " status is up"
 #    except requests.ConnectionError:
     except:
         conn.close()
-        message=" status is down"
+        message = " status is down"
     return message
 
 ##########################################
 # FUNCTION TO SEND EMAILS
 ##########################################
-
 def send_email():
+    """ Sends the data file via email """
     for email_address in MAIL_LIST[0]:
         files = []
         files.append(DATAFILE)
@@ -190,6 +195,7 @@ def send_email():
 # FUNCTION TO RESTART RASPI
 ##########################################
 def restart_pi():
+    """ Restarts the raspberry pi """
     command = "/usr/bin/sudo /sbin/shutdown -r now"
     import subprocess
     print("Entered restart subroutine REBOOTING")
@@ -200,49 +206,64 @@ def restart_pi():
 ##########################################
 # MAIN FUNCTION
 ##########################################
-EMAIL_SENT_TODAY = False
-MEASUREMENT_TAKEN = False
- #Multiple sites in urlI to reduce frequency of pings
-urlI = ["www.google.com", "www.github.com", "www.bing.com", "www.msn.com", "www.yahoo.com", "www.pinterest.com"]
-urlW="192.168.0.1" # Internal netowrk IP
-message="Power loss Rebooting / Starting up"
-message1=" "
-new_messageW=messageW="WIFI"
-messageI="Internet"
-network_message(message,message1)  # adds reboot message on bootup
-x = 0 #  URL list counter
-while True:
-    time.sleep(0.9)     #ADDED TO CUT DOWN ON CPU USAGE
+def main():
+    """ Main function """
+    email_sent_today = False
+    measurement_taken = False
+    #Multiple websites to reduce frequency of pings per site
+    websites = [
+        "www.google.com",
+        "www.github.com",
+        "www.bing.com",
+        "www.msn.com",
+        "www.yahoo.com",
+        "www.pinterest.com"
+    ]
+    ip_address = "192.168.0.1" # Internal netowrk IP
+    reboot_message = "Power loss Rebooting / Starting up "
+    new_wifi_status = wifi_status = "WIFI"
+    internet_status = "Internet"
+    network_message(reboot_message, " ") # adds reboot message on bootup
+    url_index = 0 #  URL list counter
+    while True:
+        time.sleep(0.9) # ADDED TO CUT DOWN ON CPU USAGE
 
-    if (time.time()-Internet_time) > TEST_INTERNET_IN_SEC:  #Has internet test intreval time been exceeded?
-        t=time.time()
-        new_messageI = ("Internet" + check_connection(urlI[x]))
-        Internet_time = time.time()
-#        print("Connection testing took",int((Internet_time-t)*1000),"msec")
-        if messageI != new_messageI:  # Has the internet status changed?
-            network_message(new_messageI,urlI[x]) # Update log file with Internet connectivity status ans which url used
-            messageI = new_messageI
-            new_messageW = "WIFI" + check_connection(urlW)  # Check WIFI status
-            if messageW != new_messageW:  #Has WIFI status changed
-                network_message(new_messageW,urlW) # Update log file
-                messageW = new_messageW
-        x = x + 1 #update url counter
-        if x == len(urlI):  # if counter = number of urlI list entires
-            x = 0
-    # TODO: start using unix time to simplify the conditional statements
-    if time.localtime(time.time()).tm_sec == 0 and not MEASUREMENT_TAKEN:
-        Watchdog()  #Create watchdog file every min.
-#        FILE_NAME = open(DATAFILE, "a+")
-        record_temperature()
-#        FILE_NAME.close()
-        MEASUREMENT_TAKEN = True
-    elif time.localtime(time.time()).tm_sec != 0 and MEASUREMENT_TAKEN:
-        MEASUREMENT_TAKEN = False
-    # add the uptime to the file before emailing
-    if time.localtime(time.time()).tm_hour == 18 and not EMAIL_SENT_TODAY and messageI =="Internet status is up":
-         add_uptime_to_file()
-         send_email()
-         os.remove(DATAFILE)
-         EMAIL_SENT_TODAY = True
-    elif time.localtime(time.time()).tm_hour == 19 and EMAIL_SENT_TODAY:
-        EMAIL_SENT_TODAY = False
+        # Has internet test intreval time been exceeded?
+        if (time.time()-INTERNET_TIME) \
+           > TEST_INTERNET_IN_SEC:
+
+            new_internet_status = ("Internet" + check_connection(websites[url_index]))
+
+            # Has the internet status changed?
+            if internet_status != new_internet_status:
+                # Update log file with Internet connectivity status and which url used
+                network_message(new_internet_status, websites[url_index])
+                internet_status = new_internet_status
+                new_wifi_status = "WIFI" + check_connection(ip_address)  # Check WIFI status
+
+                # Has WIFI status changed
+                if wifi_status != new_wifi_status:
+                    network_message(new_wifi_status, ip_address) # Update log file
+                    wifi_status = new_wifi_status
+
+            url_index = (url_index + 1) % len(websites) # update url counter allowing for wraparound
+
+        # TODO: start using unix time to simplify the conditional statements
+        if time.localtime(time.time()).tm_sec == 0 and not measurement_taken:
+            watchdog()  #Create watchdog file every min.
+            record_temperature()
+            measurement_taken = True
+        elif time.localtime(time.time()).tm_sec != 0 and measurement_taken:
+            measurement_taken = False
+
+        # add the uptime to the file before emailing
+        if time.localtime(time.time()).tm_hour == 18 \
+           and not email_sent_today and internet_status == "Internet status is up":
+
+            add_uptime_to_file()
+            send_email()
+            os.remove(DATAFILE)
+            email_sent_today = True
+
+        elif time.localtime(time.time()).tm_hour == 19 and email_sent_today:
+            email_sent_today = False
