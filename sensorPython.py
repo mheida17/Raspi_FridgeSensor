@@ -267,3 +267,6 @@ def main():
 
         elif time.localtime(time.time()).tm_hour == 19 and email_sent_today:
             email_sent_today = False
+
+if __name__ == "__main__":
+    main()
