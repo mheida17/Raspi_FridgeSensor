@@ -26,6 +26,12 @@ if sys.platform != "darwin":
 else:
     RASPI_BOOL = False
 
+#GPIO setup
+import RPi.GPIO as GPIO
+LEDpin = 24
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(LEDpin, GPIO.OUT,initial=GPIO.HIGH) # set LED pin as output
+
 # Globals
 with open("email_password.txt", "r") as file:
     SRC_USERNAME, SRC_PASSWORD = file.read().split(" ")
@@ -38,8 +44,6 @@ PIN_1 = 17   #Ambient
 PIN_2 = 23   #Remote
 DATAFILE = "temperature_data.txt"
 BOOT_TIME = time.time()
-TEST_INTERNET_IN_SEC = 23	#Must be greater than 4 sec or considered a DoS.
-INTERNET_TIME = (time.time() - (TEST_INTERNET_IN_SEC*2)) # force test first time through
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
 ##########################################
@@ -66,7 +70,7 @@ def record_temperature():
             temperature_1 = 100
         if temperature_2 is None:
             temperature_2 = 100
-    temperature_1 = (temperature_1 - 2) * 9 / 5.0 + 32
+    temperature_1 = (temperature_1 - 3) * 9 / 5.0 + 32
     temperature_2 = temperature_2 * 9 / 5.0 + 32
     file_name.write(
         "%s Ambient Temp %d Ambient Humidity %d Fridge Temp %d\r\n"
@@ -162,7 +166,7 @@ def send_email():
     for email_address in MAIL_LIST[0]:
         files = []
         files.append(DATAFILE)
-        text = "{}/{} Sensor Readings".format(
+        text = "{}/{} Home Sensor Readings".format(
             time.localtime(time.time()).tm_mon, time.localtime(time.time()).tm_mday
         )
         msg = MIMEMultipart()
@@ -217,7 +221,7 @@ def main():
         "www.bing.com",
         "www.msn.com",
         "www.yahoo.com",
-        "www.pinterest.com"
+        "www.amazon.com"
     ]
     ip_address = "192.168.0.1" # Internal netowrk IP
     reboot_message = "Power loss Rebooting / Starting up "
@@ -225,6 +229,9 @@ def main():
     internet_status = "Internet"
     network_message(reboot_message, " ") # adds reboot message on bootup
     url_index = 0 #  URL list counter
+    LED_on = True
+    TEST_INTERNET_IN_SEC = 10       #Must be greater than 4 sec or considered a DoS.
+    INTERNET_TIME = (time.time() - (TEST_INTERNET_IN_SEC*2)) # force test first time through
     while True:
         time.sleep(0.9) # ADDED TO CUT DOWN ON CPU USAGE
 
@@ -233,7 +240,7 @@ def main():
            > TEST_INTERNET_IN_SEC:
 
             new_internet_status = ("Internet" + check_connection(websites[url_index]))
-
+            INTERNET_TIME = time.time()
             # Has the internet status changed?
             if internet_status != new_internet_status:
                 # Update log file with Internet connectivity status and which url used
@@ -247,6 +254,13 @@ def main():
                     wifi_status = new_wifi_status
 
             url_index = (url_index + 1) % len(websites) # update url counter allowing for wraparound
+            #Blink I'm alive LED
+        if LED_on:
+            GPIO.output(LEDpin, GPIO.LOW)
+            LED_on = False
+        else:
+            GPIO.output(LEDpin, GPIO.HIGH)
+            LED_on = True
 
         # TODO: start using unix time to simplify the conditional statements
         if time.localtime(time.time()).tm_sec == 0 and not measurement_taken:
