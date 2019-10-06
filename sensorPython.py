@@ -44,6 +44,7 @@ PIN_1 = 17   #Ambient
 PIN_2 = 23   #Remote
 DATAFILE = "temperature_data.txt"
 BOOT_TIME = time.time()
+LED_ON_TIME = 10  # default LED blink time
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
 ##########################################
@@ -72,6 +73,11 @@ def record_temperature():
             temperature_2 = 100
     temperature_1 = (temperature_1 - 3) * 9 / 5.0 + 32
     temperature_2 = temperature_2 * 9 / 5.0 + 32
+    global LED_ON_TIME
+    if temperature_2 > 45:    # Changes LED cylce time based above or below 45F
+        LED_ON_TIME = 0.5     # Time is seconds
+    else:
+        LED_ON_TIME = 3       # Blinks slower if temp is good.
     file_name.write(
         "%s Ambient Temp %d Ambient Humidity %d Fridge Temp %d\r\n"
         % (
@@ -229,11 +235,13 @@ def main():
     internet_status = "Internet"
     network_message(reboot_message, " ") # adds reboot message on bootup
     url_index = 0 #  URL list counter
-    LED_on = True
+    LED_on = True #Default LED is on during start-up
     TEST_INTERNET_IN_SEC = 10       #Must be greater than 4 sec or considered a DoS.
     INTERNET_TIME = (time.time() - (TEST_INTERNET_IN_SEC*2)) # force test first time through
+    LED_TIME = time.time()
+    global LED_ON_TIME
     while True:
-        time.sleep(0.9) # ADDED TO CUT DOWN ON CPU USAGE
+        time.sleep(0.5) # ADDED TO CUT DOWN ON CPU USAGE
 
         # Has internet test intreval time been exceeded?
         if (time.time()-INTERNET_TIME) \
@@ -254,13 +262,15 @@ def main():
                     wifi_status = new_wifi_status
 
             url_index = (url_index + 1) % len(websites) # update url counter allowing for wraparound
-            #Blink I'm alive LED
-        if LED_on:
-            GPIO.output(LEDpin, GPIO.LOW)
-            LED_on = False
-        else:
-            GPIO.output(LEDpin, GPIO.HIGH)
-            LED_on = True
+            #Blink I'm alive LED, LED on time is based on temperature
+        if (time.time()-LED_TIME) > LED_ON_TIME:
+            LED_TIME = time.time()
+            if LED_on:
+                GPIO.output(LEDpin, GPIO.LOW)
+                LED_on = False
+            else:
+                GPIO.output(LEDpin, GPIO.HIGH)
+                LED_on = True
 
         # TODO: start using unix time to simplify the conditional statements
         if time.localtime(time.time()).tm_sec == 0 and not measurement_taken:
