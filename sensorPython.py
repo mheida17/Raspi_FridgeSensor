@@ -45,10 +45,15 @@ PIN_2 = 23   #Remote
 DATAFILE = "temperature_data.txt"
 BOOT_TIME = time.time()
 LED_ON_TIME = 10  # default LED blink time
+
+
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
 ##########################################
 def record_temperature():
+    ssid = "--"
+    ssid = os.popen("iwgetid -r").read()
+    print(ssid)
     """ Records the temperature to the data file """
     file_name = open(DATAFILE, "a+")
     try:
@@ -79,16 +84,17 @@ def record_temperature():
     else:
         LED_ON_TIME = 3       # Blinks slower if temp is good.
     file_name.write(
-        "%s Ambient Temp %d Ambient Humidity %d Fridge Temp %d\r\n"
+        "%s Ambient Temp %d Ambient Humidity %d Fridge Temp %d SSID: %s \r\n"
         % (
             time.strftime("%b %d - %H:%M:%S"),
             temperature_1,
             humidity_1,
             temperature_2,
+            ssid,
         )
     )
     file_name.close()
-
+    print(ssid)
 
 ##########################################
 # FUNCTION TO ADD UPTIME TO TOP OF FILE
@@ -172,7 +178,7 @@ def send_email():
     for email_address in MAIL_LIST[0]:
         files = []
         files.append(DATAFILE)
-        text = "{}/{} Home Sensor Readings".format(
+        text = "{}/{} Trailer Sensor Readings".format(
             time.localtime(time.time()).tm_mon, time.localtime(time.time()).tm_mday
         )
         msg = MIMEMultipart()
@@ -229,7 +235,7 @@ def main():
         "www.yahoo.com",
         "www.amazon.com"
     ]
-    ip_address = "192.168.0.1" # Internal netowrk IP
+    ip_address = "192.168.0.100" # Internal netowrk IP
     reboot_message = "Power loss Rebooting / Starting up "
     new_wifi_status = wifi_status = "WIFI"
     internet_status = "Internet"
@@ -243,7 +249,7 @@ def main():
     while True:
         time.sleep(0.5) # ADDED TO CUT DOWN ON CPU USAGE
 
-        # Has internet test intreval time been exceeded?
+        # Has internet test interval time been exceeded?
         if (time.time()-INTERNET_TIME) \
            > TEST_INTERNET_IN_SEC:
 
@@ -281,7 +287,7 @@ def main():
             measurement_taken = False
 
         # add the uptime to the file before emailing
-        if time.localtime(time.time()).tm_hour == 18 \
+        if time.localtime(time.time()).tm_hour == 10 \
            and not email_sent_today and internet_status == "Internet status is up":
 
             add_uptime_to_file()
@@ -289,7 +295,7 @@ def main():
             os.remove(DATAFILE)
             email_sent_today = True
 
-        elif time.localtime(time.time()).tm_hour == 19 and email_sent_today:
+        elif time.localtime(time.time()).tm_hour == 11 and email_sent_today:
             email_sent_today = False
 
 if __name__ == "__main__":
