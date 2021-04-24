@@ -45,23 +45,16 @@ PIN_2 = 23   #Remote
 DATAFILE = "temperature_data.txt"
 BOOT_TIME = time.time()
 LED_ON_TIME = 10  # default LED blink time
-global ssid
-
-##########################################
-# FUNCTION TO GET SSID NAME
-##########################################
-def get_network_ssid():
-    global ssid
-    ssid = os.popen("sudo iwgetid -r").read()
-    ssid = ssid.strip()
-    #print(ssid)
 
 
 ##########################################
 # FUNCTION TO RECORD TEMPERATURE
 ##########################################
 def record_temperature():
-    global ssid
+    ssid = "--"
+    ssid = os.popen("sudo iwgetid -r").read()
+    ssid = ssid.strip()
+    #print(ssid)
     """ Records the temperature to the data file """
     file_name = open(DATAFILE, "a+")
     try:
@@ -254,9 +247,6 @@ def main():
     INTERNET_TIME = (time.time() - (TEST_INTERNET_IN_SEC*2)) # force test first time through
     LED_TIME = time.time()
     global LED_ON_TIME
-    global ssid
-    get_network_ssid()    # get network ssid
-    #print(ssid)
     while True:
         time.sleep(0.5) # ADDED TO CUT DOWN ON CPU USAGE
 
@@ -289,14 +279,13 @@ def main():
                 GPIO.output(LEDpin, GPIO.HIGH)
                 LED_on = True
         # TODO: start using unix time to simplify the conditional statements
-        # once every hour reset WIFI to reconnect to priority WIFI
-        if time.localtime(time.time()).tm_min == 30 \
-           and time.localtime(time.time()).tm_sec == 30 \
-           and ssid != "ZLake":
+        if time.localtime(time.time()).tm_min == 30 and time.localtime(time.time()).tm_sec == 30:
+             #sleep 20
              os.system("sudo ifconfig wlan0 down")
+#            sleep 45
              os.system("sudo ifconfig wlan0 up")
+             print(ssid)
         if time.localtime(time.time()).tm_sec == 0 and not measurement_taken:
-            get_network_ssid()   # get active network ssid
             watchdog()  #Create watchdog file every min.
             record_temperature()
             measurement_taken = True
